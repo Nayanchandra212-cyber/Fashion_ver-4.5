@@ -1,6 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zenith Boutique | Master Engine v4.7</title>
+    <style>
+        :root { 
+            --bg: #fdfbfb; --ui-panel: #ffffff; 
+            --accent: #e5a4b4; --accent-hover: #d1889a;
+            --text: #4a4a4a; --border: #f0e6e8;
+            --glass: rgba(255, 255, 255, 0.7);
+        }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; -webkit-user-select: none; user-select: none; }
+        
+        header { height: 65px; padding: 0 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: var(--glass); backdrop-filter: blur(15px); z-index: 100; box-shadow: 0 2px 10px rgba(229, 164, 180, 0.1); }
+        .brand { font-weight: 800; font-size: 1.4rem; letter-spacing: 2px; text-transform: uppercase; }
+        .brand span { color: var(--accent); font-weight: 300; }
+        
+        .currency { background: linear-gradient(45deg, #fff, #ffeef2); padding: 8px 18px; border-radius: 50px; font-weight: bold; border: 1px solid var(--accent); color: var(--text); display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(229, 164, 180, 0.15); transition: 0.3s; }
+
+        main { flex: 1; display: flex; overflow: hidden; position: relative; }
+        #viewport { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #ffffff 0%, #f0e6e8 100%); overflow: hidden; }
+
+        /* CAMERA SYSTEM */
+        .camera-controls { position: absolute; left: 25px; top: 25px; z-index: 10; display: flex; flex-direction: column; gap: 12px; }
+        .cam-btn { background: var(--glass); backdrop-filter: blur(5px); border: 1px solid var(--border); padding: 12px; border-radius: 18px; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.06); transition: 0.4s; width: 50px; height: 50px; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; }
+        .cam-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        #canvas-wrapper { transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform; }
+        canvas { filter: drop-shadow(0 25px 50px rgba(0,0,0,0.12)); border-radius: 20px; }
+
+        /* UI SYSTEM */
+        #ui-side { width: 100%; max-width: 420px; background: var(--ui-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 50; }
+        .tabs { display: flex; background: #fafafa; }
+        .tab { flex: 1; padding: 20px 5px; text-align: center; cursor: pointer; font-size: 0.7rem; font-weight: 800; color: #bbb; text-transform: uppercase; border-bottom: 2px solid transparent; transition: 0.3s; }
+        .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); background: #fff; }
+
+        .scroll-area { flex: 1; overflow-y: auto; padding: 30px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .section-title { font-size: 0.7rem; color: #999; letter-spacing: 2px; text-transform: uppercase; margin: 25px 0 15px; border-bottom: 1px solid #f5f5f5; padding-bottom: 10px; font-weight: bold; display: flex; justify-content: space-between; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn { background: #fff; border: 1px solid var(--border); color: var(--text); padding: 15px 10px; border-radius: 12px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: 0.2s; position: relative; }
+        .btn.selected { background: var(--accent); color: white; border-color: var(--accent); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .lock-badge { font-size: 0.65rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 10px; margin-top: 4px; }
+
+        /* COLOR PICKER */
+        .swatch-grid { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .swatch { width: 40px; height: 40px; border-radius: 12px; cursor: pointer; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: 0.3s; }
+        .swatch.selected { border-color: var(--accent); transform: scale(1.1); }
+        .custom-color-btn { width: 40px; height: 40px; border-radius: 12px; border: 2px dashed var(--accent); display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; position: relative; }
+        .custom-color-btn input { position: absolute; opacity: 0; scale: 3; cursor: pointer; }
+
+        /* FOOTER */
+        .action-bar { padding: 20px; border-top: 1px solid var(--border); }
+        .save-btn { width: 100%; padding: 20px; border: none; background: linear-gradient(135deg, var(--accent), #f2b5d4); color: #fff; font-weight: 800; border-radius: 15px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
+
+        #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column-reverse; gap: 8px; }
+        .toast { background: rgba(30, 30, 30, 0.9); color: white; padding: 12px 25px; border-radius: 50px; font-size: 0.85rem; backdrop-filter: blur(10px); }
+
+        #system-mon { position: fixed; bottom: 10px; left: 10px; font-family: monospace; font-size: 10px; color: #ccc; pointer-events: none; }
+
+        @media (max-width: 900px) { 
+            main { flex-direction: column; } 
+            #ui-side { width: 100%; max-width: 100%; height: 50%; } 
+            #viewport { height: 50%; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">ZENITH <span>PRO_ENGINE</span></div>
+    <div class="currency">💎 <span id="gem-ui">0</span></div>
+</header>
+
+<main>
+    <div id="system-mon">CORE_FPS: <span id="fps">60</span> | KERNEL: v4.7_IMMORTAL</div>
+
+    <div id="viewport">
+        <div class="camera-controls">
+            <button class="cam-btn" onclick="Kernel.call('UI','setCamera',['face', this])">👩</button>
+            <button class="cam-btn" onclick="Kernel.call('UI','setCamera',['dress', this])">👗</button>
+            <button class="cam-btn active" id="default-cam" onclick="Kernel.call('UI','setCamera',['full', this])">🔍</button>
+        </div>
+        <div id="canvas-wrapper">
+            <canvas id="mainCanvas"></canvas>
+        </div>
+    </div>
+
+    <aside id="ui-side">
+        <div class="tabs">
+            <div class="tab active" onclick="Kernel.call('UI','switchTab',['glam', this])">Style</div>
+            <div class="tab" onclick="Kernel.call('UI','switchTab',['wardrobe', this])">Fashion</div>
+            <div class="tab" onclick="Kernel.call('UI','switchTab',['spin', this])">Lucky</div>
+            <div class="tab" onclick="Kernel.call('UI','switchTab', ['history', this])">Gallery</div>
+        </div>
+
+        <div class="scroll-area">
+            <div id="tab-glam" class="tab-content active"></div>
+            <div id="tab-wardrobe" class="tab-content"></div>
+            <div id="tab-spin" class="tab-content">
+                <div class="section-title">Lucky Spin</div>
+                <div style="text-align:center;">
+                    <div class="wheel-container" style="margin: 20px auto; width:200px; height:200px; border-radius:50%; border:5px solid var(--accent); background:conic-gradient(var(--accent) 0 60deg, #fff 60deg 120deg, var(--accent) 120deg 180deg, #fff 180deg 240deg, var(--accent) 240deg 300deg, #fff 300deg 360deg); transition: 4s cubic-bezier(0.1, 0, 0, 1);" id="spin-wheel"></div>
+                    <button class="btn" id="spin-btn" onclick="Kernel.call('Game','spin',[])" style="width:80%; margin-bottom: 15px;">SPIN (50 💎)</button>
+                    <button class="btn" onclick="Kernel.call('Game','dailyReward',[])" style="width:80%; border-color: #50c878; color: #50c878;">Claim Gift (+100 💎)</button>
+                </div>
+            </div>
+            <div id="tab-history" class="tab-content"></div>
+        </div>
+
+        <div class="action-bar">
+            <button class="save-btn" onclick="Kernel.call('Render','capture',[])">📸 Export High-Res Look</button>
+        </div>
+    </aside>
+</main>
+
+<div id="toast-container"></div>
+
+<script>
 /**
- * ZENITH KERNEL v4.5 - Immortal Production Build
- * Optimized for Nothing Phone (3a) & High-Performance Web
+ * ZENITH KERNEL v4.7 - Full Feature Personalization Build
  */
 const Kernel = {
     engines: {},
@@ -11,37 +134,21 @@ const Kernel = {
         this.engines.UI = UIEngine;
         this.engines.Render = RenderEngine;
         this.engines.Game = GameEngine;
-
-        // Sequence Boot
         Object.values(this.engines).forEach(e => e.init && e.init());
         requestAnimationFrame((t) => this.run(t));
     },
 
     call: function(engine, method, args) {
-        try {
-            return this.engines[engine][method](...args);
-        } catch (e) {
-            console.error(`[KERNEL_TRAP] ${engine}.${method}:`, e);
-            UIEngine.toast("Kernel: Auto-Healing Active", true);
-        }
+        try { return this.engines[engine][method](...args); } 
+        catch (e) { console.error(`[TRAP] ${engine}.${method}:`, e); }
     },
 
     run: function(now) {
-        if (document.hidden) {
-            requestAnimationFrame((t) => Kernel.run(t));
-            return;
-        }
-
-        // Fix: Delta clamping to prevent physics "teleporting" during lag
+        if (document.hidden) { requestAnimationFrame((t) => Kernel.run(t)); return; }
         let delta = now - this.lastTick || 16.67;
-        if (delta > 100) delta = 16.67; 
+        if (delta > 100) delta = 16.67;
         this.lastTick = now;
-        
-        if(Math.round(now) % 60 === 0) {
-            const fpsEl = document.getElementById('fps');
-            if(fpsEl) fpsEl.innerText = Math.round(1000/delta);
-        }
-
+        if(Math.round(now) % 60 === 0) document.getElementById('fps').innerText = Math.round(1000/delta);
         Kernel.engines.Render.update(now, delta);
         requestAnimationFrame((t) => Kernel.run(t));
     }
@@ -50,40 +157,34 @@ const Kernel = {
 const StoreEngine = {
     db: {
         skins: { fair: '#fce2c4', tan: '#d4a373', deep: '#6b4226' },
-        hairs: { blonde: '#f9d71c', brunette: '#4a2511', black: '#1a1a1a', rose: '#f2b5d4' },
-        fabrics: { blush: ['#ffb6c1', '#db7093'], emerald: ['#50c878', '#004d2a'], gold: ['#ffd700', '#b8860b'], midnight: ['#333333', '#0a0a0a'] },
-        accs: { tiara: 'Crystal Tiara', choker: 'Diamond Choker', gloves: 'Silk Gloves' }
+        hairs: { blonde: '#f9d71c', brunette: '#4a2511', black: '#1a1a1a', platinum: '#e5e5e5' },
+        fabrics: { 
+            blush: {c:['#ffb6c1', '#db7093'], cost:0}, 
+            emerald: {c:['#50c878', '#004d2a'], cost:150}, 
+            gold: {c:['#ffd700', '#b8860b'], cost:300}, 
+            midnight: {c:['#333333', '#0a0a0a'], cost:500} 
+        },
+        accs: { tiara: {n:'Crystal Tiara', cost:200}, choker: {n:'Diamond Choker', cost:100}, gloves: {n:'Silk Gloves', cost:150} }
     },
     state: null,
     data: null,
 
     init: function() {
         try {
-            const rawData = localStorage.getItem('z_data');
-            this.data = rawData ? JSON.parse(rawData) : { gems: 1000, unlocked: {}, lastGift: 0 };
-            if (this.data.lastGift === undefined) this.data.lastGift = 0;
-
-            const savedState = JSON.parse(localStorage.getItem('z_state')) || {};
-            this.state = { ...this.getDefaults(), ...savedState };
-        } catch(e) {
-            this.data = { gems: 1000, unlocked: {}, lastGift: 0 };
-            this.state = this.getDefaults();
-        }
+            this.data = JSON.parse(localStorage.getItem('z_data')) || { gems: 1000, unlocked: {}, history: [], lastGift: 0 };
+            this.state = JSON.parse(localStorage.getItem('z_state')) || this.getDefaults();
+        } catch(e) { this.data = { gems: 1000, unlocked: {}, history: [], lastGift: 0 }; this.state = this.getDefaults(); }
         this.sync();
     },
 
     getDefaults: function() {
-        return { 
-            skin: 'fair', hair: 'blonde', dress: 'blush', scene: 'studio', zoom: 'full',
-            tiara: false, choker: false, gloves: false, sparkles: true 
-        };
+        return { skin: 'fair', hair: 'blonde', customHair: '#f9d71c', dress: 'blush', tiara: false, choker: false, gloves: false, sparkles: true, zoom: 'full' };
     },
 
     sync: function() {
         localStorage.setItem('z_data', JSON.stringify(this.data));
         localStorage.setItem('z_state', JSON.stringify(this.state));
-        const gemEl = document.getElementById('gem-ui');
-        if(gemEl) gemEl.innerText = this.data.gems;
+        document.getElementById('gem-ui').innerText = this.data.gems;
     }
 };
 
@@ -96,234 +197,144 @@ const RenderEngine = {
 
     init: function() {
         this.ctx = this.canvas.getContext('2d');
-        this.canvas.width = 450;
-        this.canvas.height = 650;
-        // Fix: Flush array before init to prevent memory leaks
-        this.particles = [];
-        for(let i=0; i<30; i++) {
-            this.particles.push({ x: Math.random()*450, y: Math.random()*650, s: Math.random()*2+1, v: Math.random()*0.5+0.2 });
-        }
+        this.canvas.width = 450; this.canvas.height = 650;
+        this.particles = Array.from({length:30}, () => ({ x: Math.random()*450, y: Math.random()*650, s: Math.random()*2+1, v: Math.random()*0.5+0.2 }));
     },
 
     update: function(t, dt) {
-        const ctx = this.ctx;
-        const st = StoreEngine.state;
-        const db = StoreEngine.db;
-
-        if (t > this.nextBlink) {
-            this.isBlinking = true;
-            if (t > this.nextBlink + 150) {
-                this.isBlinking = false;
-                this.nextBlink = t + 2000 + Math.random() * 5000;
-            }
-        }
+        const ctx = this.ctx; const st = StoreEngine.state; const db = StoreEngine.db;
+        if (t > this.nextBlink) { this.isBlinking = true; if (t > this.nextBlink + 150) { this.isBlinking = false; this.nextBlink = t + 2000 + Math.random() * 5000; } }
 
         ctx.clearRect(0, 0, 450, 650);
-        
-        // 1. Layer: Background
-        ctx.fillStyle = st.scene === 'night' ? '#0a0a1a' : '#fdfbfb';
-        ctx.fillRect(0, 0, 450, 650);
+        ctx.fillStyle = '#fdfbfb'; ctx.fillRect(0, 0, 450, 650);
 
-        // 2. Layer: Particles (Fairy Dust)
         if (st.sparkles) {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-            this.particles.forEach(p => {
-                p.y -= p.v * (dt/16);
-                if (p.y < -10) p.y = 660;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
-            });
+            ctx.fillStyle = "rgba(255, 223, 128, 0.6)";
+            this.particles.forEach(p => { p.y -= p.v * (dt/16); if (p.y < -10) p.y = 660; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill(); });
         }
 
-        // 3. Layer: Body Foundation
         const skin = db.skins[st.skin] || db.skins.fair;
         ctx.fillStyle = skin;
         ctx.beginPath(); ctx.ellipse(225, 120, 30, 42, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillRect(215, 150, 20, 25);
+        ctx.fillRect(215, 152, 20, 25);
         ctx.beginPath(); ctx.moveTo(160, 190); ctx.lineTo(290, 190); ctx.lineTo(270, 240); ctx.lineTo(180, 240); ctx.fill();
 
-        // 4. Layer: Clothes & Gloves
-        if (st.gloves) {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-            ctx.fillRect(160, 200, 20, 40); ctx.fillRect(270, 200, 20, 40);
-        }
+        if (st.gloves) { ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.fillRect(160, 205, 20, 35); ctx.fillRect(270, 205, 20, 35); }
 
-        const fabric = db.fabrics[st.dress] || db.fabrics.blush;
-        const grd = ctx.createLinearGradient(0, 200, 0, 650);
-        grd.addColorStop(0, fabric[0]); grd.addColorStop(1, fabric[1]);
+        const fab = db.fabrics[st.dress].c;
+        const grd = ctx.createLinearGradient(0, 240, 0, 650); grd.addColorStop(0, fab[0]); grd.addColorStop(1, fab[1]);
         ctx.fillStyle = grd;
-        ctx.beginPath();
-        ctx.moveTo(185, 240); ctx.lineTo(265, 240);
-        ctx.bezierCurveTo(360, 400, 390, 600, 340, 630);
-        ctx.lineTo(110, 630);
-        ctx.bezierCurveTo(60, 600, 90, 400, 185, 240);
-        ctx.fill();
+        ctx.beginPath(); ctx.moveTo(185, 240); ctx.lineTo(265, 240); ctx.bezierCurveTo(360, 400, 390, 600, 340, 630); ctx.lineTo(110, 630); ctx.bezierCurveTo(60, 600, 90, 400, 185, 240); ctx.fill();
 
-        // 5. Layer: Face Features
+        // Realistic Face
         ctx.fillStyle = '#222';
-        if (this.isBlinking) {
-            ctx.fillRect(210, 118, 10, 2); ctx.fillRect(230, 118, 10, 2);
-        } else {
-            ctx.beginPath(); ctx.arc(215, 118, 3, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(235, 118, 3, 0, Math.PI*2); ctx.fill();
-        }
+        if (this.isBlinking) { ctx.fillRect(210, 118, 10, 2); ctx.fillRect(230, 118, 10, 2); } 
+        else { ctx.beginPath(); ctx.arc(215, 118, 3, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(235, 118, 3, 0, Math.PI*2); ctx.fill(); }
 
-        // 6. Layer: Accessories (Tiara/Choker)
-        if (st.tiara) {
-            ctx.strokeStyle = "#ffd700"; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(225, 85, 22, Math.PI, 0); ctx.stroke();
-            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(225, 63, 4, 0, Math.PI*2); ctx.fill();
-        }
-        if (st.choker) {
-            ctx.fillStyle = "#333"; ctx.fillRect(215, 160, 20, 5);
-        }
+        if (st.tiara) { ctx.strokeStyle = "#ffd700"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(225, 85, 22, Math.PI, 0); ctx.stroke(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(225, 63, 4, 0, Math.PI*2); ctx.fill(); }
+        if (st.choker) { ctx.fillStyle = "#333"; ctx.fillRect(215, 162, 20, 5); ctx.fillStyle = "aqua"; ctx.beginPath(); ctx.arc(225, 165, 3, 0, Math.PI*2); ctx.fill(); }
 
-        // 7. Layer: Hair (Front)
-        ctx.fillStyle = db.hairs[st.hair];
+        ctx.fillStyle = st.customHair;
         ctx.beginPath(); ctx.arc(225, 100, 36, Math.PI, 0); ctx.fill();
     },
 
     capture: function() {
-        const link = document.createElement('a');
-        link.download = `Zenith_Boutique_${Date.now()}.png`;
-        link.href = this.canvas.toDataURL();
-        link.click();
-        UIEngine.toast("Image Exported Successfully");
+        const data = this.canvas.toDataURL();
+        const link = document.createElement('a'); link.download = `Zenith_Boutique_${Date.now()}.png`; link.href = data; link.click();
+        StoreEngine.data.history.push({ img: data, date: new Date().toLocaleTimeString() });
+        StoreEngine.sync(); UIEngine.toast("Snapshot Saved to Gallery");
     }
 };
 
 const UIEngine = {
-    init: function() { 
-        this.renderMenu();
-        const savedZoom = StoreEngine.state.zoom || 'full';
-        const camBtns = document.querySelectorAll('.cam-btn');
-        const targetBtn = Array.from(camBtns).find(btn => 
-            (savedZoom === 'face' && btn.innerText.includes('👩')) ||
-            (savedZoom === 'dress' && btn.innerText.includes('👗')) ||
-            (savedZoom === 'full' && btn.innerText.includes('🔍'))
-        );
-        if(targetBtn) this.setCamera(savedZoom, targetBtn);
-    },
+    init: function() { this.renderMenu(); this.setCamera(StoreEngine.state.zoom, document.getElementById('default-cam')); },
 
     toast: function(m, err=false) {
-        const c = document.getElementById('toast-container');
-        if(!c) return;
-        const t = document.createElement('div');
-        t.className = 'toast';
-        if(err) t.style.background = "#ff4b4b";
-        t.innerText = m;
-        c.appendChild(t);
-        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 500); }, 2500);
+        const c = document.getElementById('toast-container'); const t = document.createElement('div');
+        t.className = 'toast'; if(err) t.style.background = "#ff4b4b"; t.innerText = m; c.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 500); }, 2000);
     },
 
     switchTab: function(id, el) {
         document.querySelectorAll('.tab, .tab-content').forEach(x => x.classList.remove('active'));
-        el.classList.add('active');
-        const content = document.getElementById(`tab-${id}`);
-        if(content) content.classList.add('active');
+        el.classList.add('active'); document.getElementById(`tab-${id}`).classList.add('active');
+        if(id === 'history') this.renderHistory();
     },
 
     setCamera: function(v, el) {
-        document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
-        el.classList.add('active');
-        StoreEngine.state.zoom = v;
-        StoreEngine.sync();
+        if(!el) return; document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active')); el.classList.add('active');
+        StoreEngine.state.zoom = v; StoreEngine.sync();
         const w = document.getElementById('canvas-wrapper');
         const modes = { face: 'scale(2.5) translateY(120px)', dress: 'scale(1.5) translateY(-80px)', full: 'scale(1)' };
-        if(w) w.style.transform = modes[v];
+        w.style.transform = modes[v];
     },
 
     renderMenu: function() {
         const glam = document.getElementById('tab-glam');
-        if(!glam) return;
         glam.innerHTML = `<div class="section-title">Skin Foundation</div><div class="swatch-grid">` + 
-            Object.keys(StoreEngine.db.skins).map(k => `
-                <div class="swatch ${StoreEngine.state.skin === k ? 'selected' : ''}" 
-                     style="background:${StoreEngine.db.skins[k]}" 
-                     onclick="Kernel.call('UI','pick',['skin','${k}'])">
-                </div>`).join('') + `</div>` +
-            `<div class="section-title">Hairstyle</div><div class="swatch-grid">` +
-            Object.keys(StoreEngine.db.hairs).map(k => `
-                <div class="swatch ${StoreEngine.state.hair === k ? 'selected' : ''}" 
-                     style="background:${StoreEngine.db.hairs[k]}" 
-                     onclick="Kernel.call('UI','pick',['hair','${k}'])">
-                </div>`).join('') + `</div>` +
+            Object.keys(StoreEngine.db.skins).map(k => `<div class="swatch ${StoreEngine.state.skin === k ? 'selected' : ''}" style="background:${StoreEngine.db.skins[k]}" onclick="Kernel.call('UI','pick',['skin','${k}'])"></div>`).join('') + `</div>` +
+            `<div class="section-title">Hair Color <span>Custom &rarr;</span></div><div class="swatch-grid">` +
+            Object.keys(StoreEngine.db.hairs).map(k => `<div class="swatch ${StoreEngine.state.hair === k ? 'selected' : ''}" style="background:${StoreEngine.db.hairs[k]}" onclick="Kernel.call('UI','pickHair',['${k}'])"></div>`).join('') + 
+            `<div class="custom-color-btn">🎨<input type="color" value="${StoreEngine.state.customHair}" oninput="Kernel.call('UI','pickHair',['custom', this.value])"></div></div>` +
             `<div class="section-title">Accessories</div><div class="grid">` +
-            Object.keys(StoreEngine.db.accs).map(k => `
-                <button class="btn ${StoreEngine.state[k] ? 'selected' : ''}" onclick="Kernel.call('UI','toggleAcc',['${k}'])">${StoreEngine.db.accs[k]}</button>
-            `).join('') + `<button class="btn ${StoreEngine.state.sparkles ? 'selected' : ''}" onclick="Kernel.call('UI', 'toggleAcc', ['sparkles'])">Fairy Dust ✨</button></div>`;
+            Object.keys(StoreEngine.db.accs).map(k => {
+                const item = StoreEngine.db.accs[k]; const isUnl = StoreEngine.data.unlocked[k];
+                return `<button class="btn ${StoreEngine.state[k] ? 'selected' : ''}" onclick="Kernel.call('UI','toggleAcc',['${k}', ${item.cost}])">${item.n} ${isUnl ? '' : '<br><span class="lock-badge">🔒 '+item.cost+'</span>'}</button>`;
+            }).join('') + `</div>`;
         
         const ward = document.getElementById('tab-wardrobe');
-        if(!ward) return;
-        ward.innerHTML = `<div class="section-title">Silk Boutique</div><div class="grid">` + 
-            Object.keys(StoreEngine.db.fabrics).map(k => `
-                <button class="btn ${StoreEngine.state.dress === k ? 'selected' : ''}" 
-                        onclick="Kernel.call('UI','pick',['dress','${k}'])">
-                    ${k.toUpperCase()}
-                </button>`).join('') + `</div>`;
+        ward.innerHTML = `<div class="section-title">Silk Collection</div><div class="grid">` + 
+            Object.keys(StoreEngine.db.fabrics).map(k => {
+                const item = StoreEngine.db.fabrics[k]; const isUnl = StoreEngine.data.unlocked[k] || item.cost === 0;
+                return `<button class="btn ${StoreEngine.state.dress === k ? 'selected' : ''}" onclick="Kernel.call('UI','pickDress',['${k}', ${item.cost}])">${k.toUpperCase()} ${isUnl ? '' : '<br><span class="lock-badge">🔒 '+item.cost+'</span>'}</button>`;
+            }).join('') + `</div>`;
     },
 
-    pick: function(type, val) {
-        StoreEngine.state[type] = val;
-        StoreEngine.sync();
-        this.renderMenu();
-        this.toast(`${val} equipped`);
+    renderHistory: function() {
+        const hist = document.getElementById('tab-history');
+        hist.innerHTML = `<div class="section-title">Saved Looks</div>` + (StoreEngine.data.history.length ? `<div class="grid" style="grid-template-columns: 1fr 1fr;">` + 
+            StoreEngine.data.history.map(h => `<img src="${h.img}" style="width:100%; border-radius:10px; border: 1px solid var(--border);">`).join('') + `</div>` : `<p>No snapshots yet.</p>`);
     },
 
-    toggleAcc: function(key) {
-        StoreEngine.state[key] = !StoreEngine.state[key];
-        StoreEngine.sync();
-        this.renderMenu();
+    pick: function(type, val) { StoreEngine.state[type] = val; StoreEngine.sync(); this.renderMenu(); },
+    pickHair: function(k, val) { 
+        if(k === 'custom') { StoreEngine.state.customHair = val; StoreEngine.state.hair = 'custom'; } 
+        else { StoreEngine.state.hair = k; StoreEngine.state.customHair = StoreEngine.db.hairs[k]; }
+        StoreEngine.sync(); this.renderMenu(); 
+    },
+    pickDress: function(k, cost) {
+        if(cost > 0 && !StoreEngine.data.unlocked[k]) {
+            if(StoreEngine.data.gems >= cost) { if(confirm(`Unlock for ${cost} 💎?`)) { StoreEngine.data.gems -= cost; StoreEngine.data.unlocked[k] = true; } else return; }
+            else return this.toast("Insufficient Gems", true);
+        }
+        StoreEngine.state.dress = k; StoreEngine.sync(); this.renderMenu();
+    },
+    toggleAcc: function(k, cost) {
+        if(!StoreEngine.data.unlocked[k]) {
+            if(StoreEngine.data.gems >= cost) { StoreEngine.data.gems -= cost; StoreEngine.data.unlocked[k] = true; }
+            else return this.toast("Insufficient Gems", true);
+        }
+        StoreEngine.state[k] = !StoreEngine.state[k]; StoreEngine.sync(); this.renderMenu();
     }
 };
 
 const GameEngine = {
-    isSpinning: false,
-    currentRotation: 0,
-
+    isSpinning: false, currentRotation: 0,
     spin: function() {
-        if(this.isSpinning) return;
-        if(StoreEngine.data.gems < 50) return UIEngine.toast("Low Gems!", true);
-        
-        this.isSpinning = true;
-        const btn = document.getElementById('spin-btn');
-        if(btn) btn.disabled = true;
-        StoreEngine.data.gems -= 50;
-        StoreEngine.sync();
-        
+        if(this.isSpinning || StoreEngine.data.gems < 50) return UIEngine.toast("Need 50 Gems", true);
+        this.isSpinning = true; StoreEngine.data.gems -= 50; StoreEngine.sync();
         const wheel = document.getElementById('spin-wheel');
-        this.currentRotation += (1800 + Math.random() * 1800);
-        if(wheel) wheel.style.transform = `rotate(${this.currentRotation}deg)`;
-        
-        setTimeout(() => {
-            this.isSpinning = false;
-            if(btn) btn.disabled = false;
-            const win = Math.floor(Math.random() * 400) + 10;
-            StoreEngine.data.gems += win;
-            StoreEngine.sync();
-            UIEngine.toast(`Jackpot: ${win} 💎`);
-        }, 4000);
+        this.currentRotation += (1800 + Math.random() * 1800); wheel.style.transform = `rotate(${this.currentRotation}deg)`;
+        setTimeout(() => { this.isSpinning = false; const win = Math.floor(Math.random()*400)+10; StoreEngine.data.gems += win; StoreEngine.sync(); UIEngine.toast(`Win: ${win} 💎`); }, 4000);
     },
-
     dailyReward: function() {
-        const now = Date.now();
-        const lastGift = StoreEngine.data.lastGift;
-        const cooldown = 24 * 60 * 60 * 1000;
-
-        if (now < lastGift) {
-            StoreEngine.data.lastGift = now;
-            return UIEngine.toast("Time Error Detected", true);
-        }
-
-        if (now - lastGift < cooldown) {
-            const hoursLeft = Math.ceil((cooldown - (now - lastGift)) / (1000 * 60 * 60));
-            return UIEngine.toast(`Wait ${hoursLeft}h for more`, true);
-        }
-
-        StoreEngine.data.gems += 100;
-        StoreEngine.data.lastGift = now;
-        StoreEngine.sync();
-        UIEngine.toast("Gift Received! +100 💎");
+        const now = Date.now(); const last = StoreEngine.data.lastGift;
+        if (now - last < 86400000) return UIEngine.toast("Next gift in 24h", true);
+        StoreEngine.data.gems += 100; StoreEngine.data.lastGift = now; StoreEngine.sync(); UIEngine.toast("Gift: +100 💎");
     }
 };
 
 Kernel.boot();
+</script>
+</body>
+</html>
