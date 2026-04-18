@@ -1,4 +1,4 @@
-# Zenith Boutique | OS Master Engine v4.5 💎
+# Zenith Boutique | OS Master Engine v4.7 💎
 
 Zenith Boutique is a high-end, realistic fashion styling engine built on the custom **Zenith Kernel**. Designed for high performance and stability, it features a modular architecture inspired by operating system kernels.
 
